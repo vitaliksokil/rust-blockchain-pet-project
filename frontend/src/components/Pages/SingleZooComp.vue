@@ -112,7 +112,7 @@ export default {
                 "zoo_id": this.zoo.owner_id,
               },
               gas: BOATLOAD_OF_GAS,
-              deposit: Big(this.zoo.nft_price / (10 ** 24)).times(10 ** 24).toFixed()
+              deposit: Big((this.zoo.nft_price / (10 ** 24)).toFixed(5)).times(10 ** 24).toFixed()
             },
           },
         ]
