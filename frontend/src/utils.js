@@ -7,7 +7,7 @@ import senderIcon from "./assets/sender-icon.png";
 import nearWalletIcon from "./assets/near-wallet-icon.png";
 import {providers} from "near-api-js";
 
-const nearConfig = getConfig(process.env.VUE_APP_NEAR_ENV || 'testnet');
+const nearConfig = getConfig(window.__RUNTIME_CONFIG__.VUE_APP_NEAR_ENV || 'testnet');
 
 async function init() {
 

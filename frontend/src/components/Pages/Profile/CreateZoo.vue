@@ -91,7 +91,7 @@ export default {
       let loader = this.$loading.show();
       /* upload image to IPFS */
       const file = e.target.files[0];
-      const client = new NFTStorage({token: process.env.VUE_APP_NFT_STORAGE_TOKEN});
+      const client = new NFTStorage({token: window.__RUNTIME_CONFIG__.VUE_APP_NFT_STORAGE_TOKEN});
       const metadataCid = await client.storeBlob(file)
       const metadataUrl = "https://ipfs.io/ipfs/" + metadataCid;
       loader.hide();

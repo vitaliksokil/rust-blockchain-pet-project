@@ -1,4 +1,4 @@
-const CONTRACT_NAME = process.env.VUE_APP_CONTRACT_NAME || 'nft.testnet';
+const CONTRACT_NAME = window.__RUNTIME_CONFIG__.VUE_APP_CONTRACT_NAME || 'nft.testnet';
 
 function getConfig(env) {
     switch(env) {

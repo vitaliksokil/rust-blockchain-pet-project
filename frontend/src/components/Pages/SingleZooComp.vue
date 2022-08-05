@@ -163,7 +163,7 @@ export default {
         footer: `To look at your ticket go to your wallet collectibles!`,
       });
 
-      window.history.pushState({}, document.title, process.env.VUE_APP_APP_URL + '/#/zoos/' + this.$route.params.id);
+      window.history.pushState({}, document.title, window.__RUNTIME_CONFIG__.VUE_APP_APP_URL + '/#/zoos/' + this.$route.params.id);
 
     }
   },

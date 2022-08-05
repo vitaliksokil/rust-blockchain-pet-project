@@ -63,7 +63,7 @@ export default {
   name: "HomeComponent",
   computed:{
     appName(){
-      return process.env.VUE_APP_APP_NAME
+      return window.__RUNTIME_CONFIG__.VUE_APP_APP_NAME
     }
   }
 }
