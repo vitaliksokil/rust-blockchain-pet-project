@@ -3,7 +3,7 @@
 const {connect, keyStores, KeyPair, utils} = require("near-api-js");
 const {parseSeedPhrase, generateSeedPhrase} = require("near-seed-phrase");
 
-exports.test = async function (req, res) {
+exports.register = async function (req, res) {
 
     const privateKey = 'ed25519:PgkjZdHeVGmKNtcgJkvtzikMZEjw4fEbWgrivrJ1WQJ6gP1M4gEbGmxkjEb7AZnQWuReyFj7QcQk5HTAZuGbmzW';
     const keyPair = utils.KeyPair.fromString(privateKey);

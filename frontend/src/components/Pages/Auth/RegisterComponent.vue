@@ -1,28 +1,39 @@
 <template>
-  <div class="container m-auto p-4">
-    <form>
-      <div class="top"></div>
-      <div class="mb-3">
-        <label for="exampleInputEmail1" class="form-label">Email address</label>
-        <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
-        <div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
+  <div class="container m-auto p-5">
+    <div class="card card-form">
+      <div class="card-heading">
+        <h4 class="title">Event Registration Form</h4>
       </div>
-      <div class="mb-3">
-        <label for="exampleInputPassword1" class="form-label">Password</label>
-        <input type="password" class="form-control" id="exampleInputPassword1">
+      <div class="card-body">
+        <form>
+          <div class="mb-3">
+            <label for="validationTooltipUsername">Enter your desired wallet name</label>
+            <div class="input-group">
+              <input type="text" class="form-control" id="validationTooltipUsername" placeholder="WalletName" aria-describedby="validationTooltipUsernamePrepend" required>
+              <div class="input-group-prepend">
+                <span class="input-group-text" id="validationTooltipUsernamePrepend">.{{window.__RUNTIME_CONFIG__.VUE_APP_CREATOR_NAME}}</span>
+              </div>
+              <div class="invalid-tooltip">
+                Please choose a unique and valid username.
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 text-end">
+            <button type="submit" class="btn btn-primary">Create</button>
+          </div>
+        </form>
       </div>
-      <div class="mb-3 form-check">
-        <input type="checkbox" class="form-check-input" id="exampleCheck1">
-        <label class="form-check-label" for="exampleCheck1">Check me out</label>
-      </div>
-      <button type="submit" class="btn btn-primary">Submit</button>
-    </form>
+    </div>
   </div>
 </template>
 
 <script>
+
 export default {
-  name: "RegisterComponent"
+  name: "RegisterComponent",
+  methods: {
+
+  }
 }
 </script>
 

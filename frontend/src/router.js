@@ -5,7 +5,16 @@ const publicPath = window.__RUNTIME_CONFIG__.VUE_APP_NODE_ENV === 'production'
     : '/';
 const routes = [
     { path: publicPath, component: () => import('./components/Pages/HomeComponent'), name:'home'  },
-    { path: publicPath + 'register', component: () => import('./components/Pages/Auth/RegisterComponent'), name:'register'  },
+    {
+        path: publicPath + 'register',
+        component: () => import('./components/Pages/Auth/RegisterComponent'),
+        name:'register',
+        beforeEnter: () => {
+            if (window.nearAccount.accountId){
+                return { name:'profile' }
+            }
+        },
+    },
     { path: publicPath + 'zoos', component: () => import('./components/Pages/ZoosComponent'), name:'zoos' },
     { path: publicPath + 'zoos/:id', component: () => import('./components/Pages/SingleZooComp'), name:'zoo-single' },
     {
