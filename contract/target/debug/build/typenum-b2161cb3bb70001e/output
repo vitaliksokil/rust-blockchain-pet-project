@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/var/www/ch6-zoo-nft-by-near-ukraine/contract/target/debug/build/typenum-b2161cb3bb70001e/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/var/www/ch6-zoo-nft-by-near-ukraine/contract/target/debug/build/typenum-b2161cb3bb70001e/out/op.rs
