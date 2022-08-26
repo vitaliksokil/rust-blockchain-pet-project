@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
-use near_sdk::{PromiseOrValue, Promise, near_bindgen, PanicOnDefault, BorshStorageKey, AccountId, borsh::{self, BorshDeserialize, BorshSerialize}, serde::{Deserialize, Serialize}, env};
-use near_contract_standards::non_fungible_token::NonFungibleToken;
-use near_contract_standards::non_fungible_token::{metadata::NFTContractMetadata, Token, TokenId};
-use near_contract_standards::non_fungible_token::metadata::{NFT_METADATA_SPEC, NonFungibleTokenMetadataProvider, TokenMetadata};
-use near_sdk::collections::{LazyOption, UnorderedMap};
+use near_sdk::{PromiseOrValue, Promise, near_bindgen, PanicOnDefault, BorshStorageKey, AccountId, borsh::{self, BorshDeserialize, BorshSerialize}, serde::{Deserialize, Serialize}, env, CryptoHash};
+use near_sdk::collections::{LazyOption, LookupMap, UnorderedMap, UnorderedSet};
+use near_sdk::json_types::{U128, Base64VecU8};
 
 use crate::zoo::*;
+use crate::nft::*;
 
 mod nft;
 mod zoo;
@@ -16,47 +15,103 @@ mod test;
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct Contract {
-    token: NonFungibleToken,
-    metadata: LazyOption<NFTContractMetadata>,
-    pub zoos: UnorderedMap<AccountId, Zoo>,
+    // token: NonFungibleToken,
+    // metadata: LazyOption<NFTContractMetadata>,
+    // pub zoos: UnorderedMap<AccountId, Zoo>,
+
+    //contract owner
+    pub owner_id: AccountId,
+
+    //keeps track of all the token IDs for a given account
+    pub tokens_per_owner: LookupMap<AccountId, UnorderedSet<TokenId>>,
+
+    //keeps track of the token struct for a given token ID
+    pub tokens_by_id: LookupMap<TokenId, Token>,
+
+    //keeps track of the token metadata for a given token ID
+    pub token_metadata_by_id: UnorderedMap<TokenId, TokenMetadata>,
+
+    //keeps track of the metadata for the contract
+    pub metadata: LazyOption<NFTContractMetadata>,
+
 }
 
-#[derive(BorshSerialize, BorshStorageKey)]
+/// Helper structure for keys of the persistent collections.
+#[derive(BorshSerialize)]
 pub enum StorageKey {
-    NonFungibleToken,
-    Metadata,
-    TokenMetadata,
-    Enumeration,
-    Approval,
+    TokensPerOwner,
+    TokenPerOwnerInner { account_id_hash: CryptoHash },
+    TokensById,
+    TokenMetadataById,
+    NFTContractMetadata,
+    TokensPerType,
+    TokensPerTypeInner { token_type_hash: CryptoHash },
+    TokenTypesLocked,
 }
 
 #[near_bindgen]
 impl Contract {
+    /*
+      initialization function (can only be called once).
+      this initializes the contract with default metadata so the
+      user doesn't have to manually type metadata.
+  */
     #[init]
-    pub fn new(owner_id: AccountId) -> Self {
-        Self {
-            token: NonFungibleToken::new(
-                StorageKey::NonFungibleToken,
-                owner_id,
-                Some(StorageKey::TokenMetadata),
-                Some(StorageKey::Enumeration),
-                Some(StorageKey::Approval),
-            ),
-            metadata: LazyOption::new(
-                StorageKey::Metadata,
-                Some(&NFTContractMetadata {
-                    spec: NFT_METADATA_SPEC.to_string(),
-                    name: "u_zoo".to_string(),
-                    symbol: "Example".to_string(),
-                    icon: Some("ANY_SVG".to_string()),
-                    base_uri: None,
-                    reference: None,
-                    reference_hash: None,
-                }),
-            ),
-            zoos: UnorderedMap::new(b"d".to_vec()),
-        }
+    pub fn new_default_meta(owner_id: AccountId) -> Self {
+        Self::new(owner_id, NFTContractMetadata {
+            spec: "u_zoo_1.0.0".to_string(),
+            name: "u_zoo".to_string(),
+            symbol: "UZOO".to_string(),
+            icon: None,
+            base_uri: None,
+            reference: None,
+            reference_hash: None,
+        })
     }
+
+    /*
+        initialization function (can only be called once).
+        this initializes the contract with metadata that was passed in and
+        the owner_id.
+    */
+    #[init]
+    pub fn new(owner_id: AccountId, metadata: NFTContractMetadata) -> Self {
+        let this = Self {
+            owner_id,
+            tokens_per_owner: LookupMap::new(StorageKey::TokensPerOwner.try_to_vec().unwrap()),
+            tokens_by_id: LookupMap::new(StorageKey::TokensById.try_to_vec().unwrap()),
+            token_metadata_by_id: UnorderedMap(StorageKey::TokenMetadataById.try_to_vec().unwrap()),
+            metadata: LazyOption::new(StorageKey::NFTContractMetadata.try_to_vec().unwrap(), Some(&metadata)),
+        };
+
+        this
+    }
+
+    // #[init]
+    // pub fn new(owner_id: AccountId) -> Self {
+    //     Self {
+    //         token: NonFungibleToken::new(
+    //             StorageKey::NonFungibleToken,
+    //             owner_id,
+    //             Some(StorageKey::TokenMetadata),
+    //             Some(StorageKey::Enumeration),
+    //             Some(StorageKey::Approval),
+    //         ),
+    //         metadata: LazyOption::new(
+    //             StorageKey::Metadata,
+    //             Some(&NFTContractMetadata {
+    //                 spec: NFT_METADATA_SPEC.to_string(),
+    //                 name: "u_zoo".to_string(),
+    //                 symbol: "Example".to_string(),
+    //                 icon: Some("ANY_SVG".to_string()),
+    //                 base_uri: None,
+    //                 reference: None,
+    //                 reference_hash: None,
+    //             }),
+    //         ),
+    //         zoos: UnorderedMap::new(b"d".to_vec()),
+    //     }
+    // }
 
     // #[payable]
     // pub fn buy_nft(&mut self, zoo_id: AccountId) {
@@ -97,7 +152,6 @@ impl Contract {
     //
     //     Promise::new(zoo.owner_id).transfer(deposit);
     // }
-
 }
 
 near_contract_standards::impl_non_fungible_token_core!(Contract, token);
@@ -112,14 +166,12 @@ impl NonFungibleTokenMetadataProvider for Contract {
 }
 
 
-
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     use near_sdk::test_utils::{accounts};
     use near_sdk::{testing_env};
     use test::get_context;
-
 
 
     const MINT_STORAGE_COST: u128 = 5870000000000000000000;
