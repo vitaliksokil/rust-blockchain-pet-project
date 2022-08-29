@@ -1,4 +1,4 @@
 near delete main.uzoo.testnet uzoo.testnet && \
 near create-account main.uzoo.testnet --masterAccount uzoo.testnet && \
 ./build.sh && near deploy main.uzoo.testnet --wasmFile res/u_zoo.wasm && \
-near call main.uzoo.testnet new '{"owner_id": "main.uzoo.testnet"}' --accountId main.uzoo.testnet
+near call main.uzoo.testnet new_default_meta '{"owner_id": "main.uzoo.testnet"}' --accountId main.uzoo.testnet

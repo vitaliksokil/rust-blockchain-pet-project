@@ -4,12 +4,12 @@ use near_sdk::{PromiseOrValue, Promise, near_bindgen, PanicOnDefault, BorshStora
 use near_sdk::collections::{LazyOption, LookupMap, UnorderedMap, UnorderedSet};
 use near_sdk::json_types::{U128, Base64VecU8};
 
-use crate::zoo::*;
+// use crate::zoo::*;
 use crate::nft::*;
 
 mod nft;
-mod zoo;
-mod test;
+// mod zoo;
+// mod test;
 
 
 #[near_bindgen]
@@ -80,7 +80,7 @@ impl Contract {
             owner_id,
             tokens_per_owner: LookupMap::new(StorageKey::TokensPerOwner.try_to_vec().unwrap()),
             tokens_by_id: LookupMap::new(StorageKey::TokensById.try_to_vec().unwrap()),
-            token_metadata_by_id: UnorderedMap(StorageKey::TokenMetadataById.try_to_vec().unwrap()),
+            token_metadata_by_id: UnorderedMap::new(StorageKey::TokenMetadataById.try_to_vec().unwrap()),
             metadata: LazyOption::new(StorageKey::NFTContractMetadata.try_to_vec().unwrap(), Some(&metadata)),
         };
 
@@ -152,17 +152,6 @@ impl Contract {
     //
     //     Promise::new(zoo.owner_id).transfer(deposit);
     // }
-}
-
-near_contract_standards::impl_non_fungible_token_core!(Contract, token);
-near_contract_standards::impl_non_fungible_token_approval!(Contract, token);
-near_contract_standards::impl_non_fungible_token_enumeration!(Contract, token);
-
-#[near_bindgen]
-impl NonFungibleTokenMetadataProvider for Contract {
-    fn nft_metadata(&self) -> NFTContractMetadata {
-        self.metadata.get().unwrap()
-    }
 }
 
 
