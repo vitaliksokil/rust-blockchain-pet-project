@@ -1,0 +1,1 @@
+./build.sh && near deploy main.uzoo.testnet --wasmFile res/u_zoo.wasm
