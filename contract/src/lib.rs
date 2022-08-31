@@ -1,3 +1,5 @@
+extern crate core;
+
 use std::collections::HashMap;
 use std::fmt::Debug;
 use near_sdk::{PromiseOrValue, Promise, near_bindgen, PanicOnDefault, BorshStorageKey, AccountId, borsh::{self, BorshDeserialize, BorshSerialize}, serde::{Deserialize, Serialize}, env, CryptoHash};

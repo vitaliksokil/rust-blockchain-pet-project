@@ -21,7 +21,6 @@ pub trait NonFungibleTokenCore {
 
 #[near_bindgen]
 impl NonFungibleTokenCore for Contract {
-
     //implementation of the nft_transfer method. This transfers the NFT from the current owner to the receiver.
     #[payable]
     fn nft_transfer(
@@ -30,22 +29,25 @@ impl NonFungibleTokenCore for Contract {
         token_id: TokenId,
         memo: Option<String>,
     ) {
-        /*
-            FILL THIS IN
-        */
+        //assert that the user attached exactly 1 yoctoNEAR. This is for security and so that the user will be redirected to the NEAR wallet.
+        assert_one_yocto();
+        //get the sender to transfer the token from the sender to the receiver
+        let sender_id = env::predecessor_account_id();
+        //call the internal transfer method
+        self.internal_transfer(&sender_id, &receiver_id, &token_id, memo);
     }
 
     //get the information for a specific token ID
     fn nft_token(&self, token_id: TokenId) -> Option<JsonToken> {
-       if let Some(token) = self.tokens_by_id.get(&token_id) {
-           let metadata = self.token_metadata_by_id.get(&token_id).unwrap();
-           Some(JsonToken{
-               token_id,
-               owner_id: token.owner_id,
-               metadata
-           })
-       }else{
-           None
-       }
+        if let Some(token) = self.tokens_by_id.get(&token_id) {
+            let metadata = self.token_metadata_by_id.get(&token_id).unwrap();
+            Some(JsonToken {
+                token_id,
+                owner_id: token.owner_id,
+                metadata,
+            })
+        } else {
+            None
+        }
     }
 }
