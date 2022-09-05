@@ -17,7 +17,7 @@ impl Contract {
         //specify the token struct that contains the owner ID
         let token = Token {
             //set the owner ID equal to the receiver ID passed into the function
-            owner_id: receiver_id
+            owner_id: receiver_id,
         };
         //insert the token ID and token struct and make sure that the token doesn't exist
         assert!(self.tokens_by_id.insert(&token_id, &token).is_none(), "Token already exists");

@@ -1,4 +1,3 @@
-use core::panicking::panic;
 use near_sdk::Balance;
 use crate::*;
 
@@ -32,6 +31,13 @@ pub(crate) fn refund_deposit(storage_used: u64) {
 pub(crate) fn assert_one_yocto() {
     assert_eq!(env::attached_deposit(), 1, "Requires attached deposit of exactly 1 yoctoNEAR")
 }
+
+
+//Assert that the user has attached at least 1 yoctoNEAR (for security reasons and to pay for storage)
+pub(crate) fn assert_at_least_one_yocto() {
+    assert!(env::attached_deposit() >= 1, "Requires attached deposit of at least 1 yoctoNEAR")
+}
+
 
 
 impl Contract {
@@ -78,7 +84,7 @@ impl Contract {
         //get the token object by passing in the token_id
         let token = self.tokens_by_id.get(&token_id).expect("No token");
         //if the sender doesn't equal the owner, we panic
-        if sender_id != token.owner_id {
+        if sender_id != &token.owner_id {
             env::panic_str("Unauthorized");
         }
         //we make sure that the sender isn't sending the token to themselves
