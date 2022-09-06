@@ -14,6 +14,6 @@ pub fn get_context(predecessor_account_id: AccountId) -> VMContextBuilder {
 pub fn init(account_id: AccountId) -> Contract {
     let context = get_context(account_id.clone());
     testing_env!(context.build());
-    let contract = Contract::new(account_id);
+    let contract = Contract::new_default_meta(account_id);
     contract
 }
