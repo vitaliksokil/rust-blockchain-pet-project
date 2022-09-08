@@ -29,7 +29,7 @@ pub struct Contract {
     pub metadata: LazyOption<NFTContractMetadata>,
 
     pub fundraiser_per_owner: LookupMap<AccountId, UnorderedSet<FundraiserId>>,
-    pub fundraisers_by_id: LookupMap<FundraiserId, Fundraiser>,
+    pub fundraisers_by_id: UnorderedMap<FundraiserId, Fundraiser>,
     pub fundraiser_counter: u32,
 
 
@@ -91,8 +91,8 @@ impl Contract {
             token_metadata_by_id: UnorderedMap::new(StorageKey::TokenMetadataById.try_to_vec().unwrap()),
             metadata: LazyOption::new(StorageKey::NFTContractMetadata.try_to_vec().unwrap(), Some(&metadata)),
 
-            fundraiser_per_owner: LookupMap::new(vec![]),
-            fundraisers_by_id: LookupMap::new(vec![]),
+            fundraiser_per_owner: LookupMap::new(b"m"),
+            fundraisers_by_id: UnorderedMap::new(b"v"),
             fundraiser_counter: 0
         };
 

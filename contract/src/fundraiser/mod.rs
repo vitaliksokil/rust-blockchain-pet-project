@@ -5,9 +5,10 @@ pub type FundraiserId = u32;
 
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
-enum FundraiserStatus {
+pub enum FundraiserStatus {
     ACTIVE,
-    INACTIVE,
+    DRAFT,
+    COMPLETED,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -25,16 +26,22 @@ pub struct JsonFundraiser {
     pub fundraiser: Fundraiser,
     pub fundraiser_id: FundraiserId,
     pub token_id: TokenId,
+    pub token: Token,
     pub token_metadata: TokenMetadata,
 }
 
 
 #[near_bindgen]
 impl Contract {
-    // pub fn get_all_fundraisers(&self) -> Vec<JsonFundraiser> {
-    //     self.fundraiser_per_owner.iter().collect()
-    // }
-    //
+    pub fn get_all_fundraisers(&self, page: Option<u32>) -> Vec<JsonFundraiser> {
+        let (from_index, take) = pagination(page);
+        self.fundraisers_by_id.keys()
+            .skip(from_index as usize)
+            .take(take as usize)
+            .map(|fundraiser_id: FundraiserId| self.get_fundraiser_by_id(fundraiser_id.clone()).unwrap())
+            .collect()
+    }
+
     pub fn get_fundraiser_by_id(&self, id: FundraiserId) -> Option<JsonFundraiser> {
         if let Some(fundraiser) = self.fundraisers_by_id.get(&id) {
             let token_id: TokenId = id.to_string();
@@ -42,6 +49,7 @@ impl Contract {
                 Some(JsonFundraiser {
                     fundraiser,
                     fundraiser_id: id,
+                    token: self.tokens_by_id.get(&token_id).unwrap(),
                     token_id,
                     token_metadata: jsonToken.metadata,
                 })
@@ -53,65 +61,51 @@ impl Contract {
         }
     }
 
-    // #[test]
-    // fn get_zoo_by_id_success_test() {
-    //     let mut contract = init(accounts(1));
-    //     let zoo: Zoo = Zoo {
-    //         owner_id: accounts(1),
-    //         title: String::from("test"),
-    //         description: String::from("test"),
-    //         address: String::from("test"),
-    //         banner_image: String::from("test"),
-    //         nft_media: String::from("test"),
-    //         nft_price: 1_000_000_000_000_000,
-    //         total_collected: 0,
-    //         nft_sold: 0,
-    //     };
-    //     contract.zoos.insert(
-    //         &accounts(1),
-    //         &zoo,
-    //     );
-    //     assert_eq!(contract.get_zoo_by_id(accounts(1)), zoo);
-    // }
+    #[payable]
+    pub fn add_new_fundraiser(
+        &mut self,
+        title: String,
+        description: String,
+        status: FundraiserStatus,
+        token_metadata: TokenMetadata,
+    ) {
+        assert!(title != "", "Abort. Title is empty");
+        assert!(title.len() <= 1000, "Abort. Title is longer then 1000 characters");
+        assert!(description.len() <= 2000, "Abort. Description is longer then 2000 characters");
 
+        let owner_id = env::predecessor_account_id();
+        let fundraiser = Fundraiser {
+            owner_id: owner_id.clone(),
+            title,
+            description,
+            status,
+        };
 
-    //
-    // pub fn add_new_zoo(
-    //     &mut self,
-    //     title: String,
-    //     description: String,
-    //     address: String,
-    //     banner_image: String,
-    //     nft_media: String,
-    //     nft_price: String,
-    // ) {
-    //     let nft_price_u128: u128 = nft_price.parse::<u128>().unwrap();
-    //     assert!(self.zoos.get(&env::predecessor_account_id()).is_none(), "Zoo already created for this user.");
-    //
-    //     assert!(title != "", "Abort. Title is empty");
-    //     assert!(title.len() <= 1000, "Abort. Title is longer then 1000 characters");
-    //     assert!(description.len() <= 2000, "Abort. Description is longer then 2000 characters");
-    //     assert!(address != "", "Abort. Address is empty");
-    //     assert!(address.len() <= 1000, "Abort. Address is longer then 1000 characters");
-    //     assert!(banner_image != "", "Abort. Banner image is empty");
-    //     assert!(nft_media != "", "Abort. NFT media is empty");
-    //
-    //
-    //     self.zoos.insert(
-    //         &env::predecessor_account_id(),
-    //         &Zoo {
-    //             owner_id: env::predecessor_account_id(),
-    //             title,
-    //             description,
-    //             address,
-    //             banner_image,
-    //             nft_media,
-    //             nft_price: nft_price_u128,
-    //             total_collected: 0,
-    //             nft_sold: 0,
-    //         },
-    //     );
-    // }
+        let mut f_owner_set = self.fundraiser_per_owner.get(&owner_id).unwrap_or_else(|| {
+            //if the account doesn't have any fundraisers, we create a new unordered set
+
+            // Constructing a unique prefix for a nested UnorderedSet from a concatenation
+            // of a prefix and a hash of the account id.
+            let prefix: Vec<u8> = [
+                b"s".as_slice(),
+                &near_sdk::env::sha256_array(owner_id.as_bytes()),
+            ]
+                .concat();
+            UnorderedSet::new(prefix)
+        });
+
+        self.fundraiser_counter += 1;
+
+        let fundraiser_id: FundraiserId = self.fundraiser_counter.clone();
+        let token_id: TokenId = self.fundraiser_counter.clone().to_string();
+
+        f_owner_set.insert(&fundraiser_id);
+        self.fundraiser_per_owner.insert(&owner_id, &f_owner_set);
+
+        self.nft_mint(token_id, owner_id, token_metadata);
+
+        self.fundraisers_by_id.insert(&fundraiser_id.clone(), &fundraiser);
+    }
     //
     // pub fn update_zoo(
     //     &mut self,
@@ -152,7 +146,6 @@ mod tests {
     use near_sdk::test_utils::{accounts};
     use std::iter::repeat;
     use test::init;
-
 
     #[test]
     fn get_fundraiser_by_id_not_found_test() {
@@ -199,23 +192,23 @@ mod tests {
 
         contract.token_metadata_by_id.insert(&token_id, &token_metadata);
 
-        let json_fundraiser:JsonFundraiser = JsonFundraiser {
+        let json_fundraiser: JsonFundraiser = JsonFundraiser {
             fundraiser,
             fundraiser_id,
             token_id,
-            token_metadata
+            token_metadata,
         };
         assert_eq!(contract.get_fundraiser_by_id(1), Some(json_fundraiser));
     }
 
 
-    // #[test]
-    // fn get_all_fundraisers_empty_test() {
-    //     let contract = init(accounts(1));
-    //
-    //     let empty: Vec<JsonFundraiser> = Vec::new();
-    //     assert_eq!(contract.get_all_fundraisers(), empty);
-    // }
+    #[test]
+    fn get_all_fundraisers_empty_test() {
+        let contract = init(accounts(1));
+
+        let empty: Vec<JsonFundraiser> = Vec::new();
+        assert_eq!(contract.get_all_fundraisers(), empty);
+    }
 
 
     //

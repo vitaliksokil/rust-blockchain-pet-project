@@ -1,1 +1,1 @@
-./build.sh && near deploy main.uzoo.testnet --wasmFile res/u_zoo.wasm
+./build.sh && near deploy main.u_fundraiser.testnet --wasmFile res/u_fundraisers.wasm
