@@ -106,6 +106,36 @@ impl Contract {
 
         self.fundraisers_by_id.insert(&fundraiser_id.clone(), &fundraiser);
     }
+    #[payable]
+    pub fn donate_to_fundraiser(&mut self, fundraiser_id: FundraiserId)
+    {
+        let fundraiser: Fundraiser = self.fundraisers_by_id.get(&fundraiser_id).unwrap();
+        let donation = env::attached_deposit();
+        let donor_id = env::predecessor_account_id();
+
+        let mut fundraiser_donations_list = self.fundraisers_donations.get(&fundraiser_id).unwrap_or_else(|| {
+            // if there is no donations yet -> initialize lookup for the donor
+            let prefix: Vec<u8> = [
+                b"f_donations".as_slice(),
+                &near_sdk::env::sha256_array(donor_id.as_bytes()),
+            ]
+                .concat();
+            UnorderedMap::new(prefix)
+        });
+        let mut donations_of_donor = fundraiser_donations_list.get(&donor_id).unwrap_or_else(|| {
+            // if there is no donations for donor -> init it
+            let prefix: Vec<u8> = [
+                b"donor".as_slice(),
+                &near_sdk::env::sha256_array(donor_id.as_bytes()),
+            ].concat();
+            UnorderedSet::new(prefix)
+        });
+        donations_of_donor.insert(&u128::from(donation)); // todo make to store a lot of equal values
+        fundraiser_donations_list.insert(&donor_id, &donations_of_donor);
+        self.fundraisers_donations.insert(&fundraiser_id, &fundraiser_donations_list);
+        log!("{:?}",donation);
+        log!("{:?}", self.fundraisers_donations.get(&fundraiser_id).unwrap().get(&donor_id).unwrap().to_vec())
+    }
     //
     // pub fn update_zoo(
     //     &mut self,
@@ -143,9 +173,27 @@ impl Contract {
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
-    use near_sdk::test_utils::{accounts};
     use std::iter::repeat;
-    use test::init;
+    use test::test_helpers::init;
+    use near_sdk::test_utils::{accounts, VMContextBuilder};
+    use near_sdk::testing_env;
+    use crate::test_helpers::get_context;
+
+    const MINT_STORAGE_COST: u128 = 5870000000000000000000;
+
+    fn attach_dep_for_adding_fundraiser() -> Contract {
+        let mut context = get_context(accounts(0));
+        testing_env!(context.build());
+        let mut contract = Contract::new_default_meta(accounts(0).into());
+
+        testing_env!(context
+            .storage_usage(env::storage_usage())
+            .attached_deposit(MINT_STORAGE_COST)
+            .predecessor_account_id(accounts(0))
+            .build());
+
+        contract
+    }
 
     #[test]
     fn get_fundraiser_by_id_not_found_test() {
@@ -196,6 +244,7 @@ mod tests {
             fundraiser,
             fundraiser_id,
             token_id,
+            token,
             token_metadata,
         };
         assert_eq!(contract.get_fundraiser_by_id(1), Some(json_fundraiser));
@@ -205,188 +254,93 @@ mod tests {
     #[test]
     fn get_all_fundraisers_empty_test() {
         let contract = init(accounts(1));
-
         let empty: Vec<JsonFundraiser> = Vec::new();
-        assert_eq!(contract.get_all_fundraisers(), empty);
+        assert_eq!(contract.get_all_fundraisers(Some(1)), empty);
+    }
+
+    #[test]
+    fn get_all_fundraisers_test() {
+        let mut contract = attach_dep_for_adding_fundraiser();
+
+        contract.add_new_fundraiser("test".to_string(), "".to_string(), FundraiserStatus::ACTIVE, TokenMetadata {
+            title: None,
+            description: None,
+            media: None,
+            media_hash: None,
+            copies: None,
+            issued_at: None,
+            expires_at: None,
+            starts_at: None,
+            updated_at: None,
+            extra: None,
+            reference: None,
+            reference_hash: None,
+        });
+        assert_eq!(contract.get_all_fundraisers(Some(1)).len(), 1);
+        assert_eq!(contract.get_all_fundraisers(None).len(), 1);
+    }
+
+    // #[should_panic(expected = "Abort. Address is longer then 1000 characters")]
+
+    #[test]
+    #[should_panic] // we are not attaching any deposit so it would panic
+    fn add_new_fundraiser_panic_test() {
+        let mut contract = init(accounts(1));
+        contract.add_new_fundraiser("test".to_string(), "".to_string(), FundraiserStatus::ACTIVE, TokenMetadata {
+            title: None,
+            description: None,
+            media: None,
+            media_hash: None,
+            copies: None,
+            issued_at: None,
+            expires_at: None,
+            starts_at: None,
+            updated_at: None,
+            extra: None,
+            reference: None,
+            reference_hash: None,
+        });
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_new_fundraiser_validation_title_test() {
+        let mut contract = attach_dep_for_adding_fundraiser();
+        contract.add_new_fundraiser("".to_string(), "".to_string(), FundraiserStatus::ACTIVE, TokenMetadata {
+            title: None,
+            description: None,
+            media: None,
+            media_hash: None,
+            copies: None,
+            issued_at: None,
+            expires_at: None,
+            starts_at: None,
+            updated_at: None,
+            extra: None,
+            reference: None,
+            reference_hash: None,
+        });
     }
 
 
-    //
-    // #[test]
-    // fn get_all_zoos_empty_test() {
-    //     let contract = init(accounts(1));
-    //
-    //     let empty: HashMap<AccountId, Zoo> = HashMap::new();
-    //     assert_eq!(contract.get_all_zoos(), empty);
-    // }
-    //
-    // #[test]
-    // fn get_all_zoos_test() {
-    //     let mut contract = init(accounts(1));
-    //
-    //     contract.zoos.insert(
-    //         &accounts(2),
-    //         &Zoo {
-    //             owner_id: accounts(2),
-    //             title: String::from("test"),
-    //             description: String::from("test"),
-    //             address: String::from("test"),
-    //             banner_image: String::from("test"),
-    //             nft_media: String::from("test"),
-    //             nft_price: 1_000_000_000_000_000_000_000_000,
-    //             total_collected: 0,
-    //             nft_sold: 0,
-    //         },
-    //     );
-    //     let result: HashMap<AccountId, Zoo> = contract.zoos.iter().collect();
-    //     let result_from_method: HashMap<AccountId, Zoo> = contract.get_all_zoos();
-    //     assert_eq!(result_from_method, result);
-    //     assert_eq!(result_from_method.get(&accounts(2)).unwrap().owner_id, accounts(2));
-    //     assert_eq!(result_from_method.get(&accounts(2)).unwrap().title, String::from("test"));
-    // }
-    //
-    // #[test]
-    // #[should_panic(expected = "Abort. Title is empty")]
-    // fn add_new_zoo_title_empty_validation_error_test() {
-    //     let mut contract = init(accounts(1));
-    //     contract.add_new_zoo(
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from("10000000000000000000"),
-    //     );
-    // }
-    //
-    // #[test]
-    // #[should_panic(expected = "Abort. Title is longer then 1000 characters")]
-    // fn add_new_zoo_title_length_validation_error_test() {
-    //     let mut contract = init(accounts(1));
-    //     contract.add_new_zoo(
-    //         repeat("X").take(1001).collect::<String>(),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from("10000000000000000000"),
-    //     );
-    // }
-    //
-    // #[test]
-    // #[should_panic(expected = "Abort. Description is longer then 2000 characters")]
-    // fn add_new_zoo_description_length_validation_error_test() {
-    //     let mut contract = init(accounts(1));
-    //     contract.add_new_zoo(
-    //         repeat("X").take(999).collect::<String>(),
-    //         repeat("X").take(2001).collect::<String>(),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from("10000000000000000000"),
-    //     );
-    // }
-    //
-    // #[test]
-    // #[should_panic(expected = "Abort. Address is empty")]
-    // fn add_new_zoo_address_empty_validation_error_test() {
-    //     let mut contract = init(accounts(1));
-    //     contract.add_new_zoo(
-    //         repeat("X").take(999).collect::<String>(),
-    //         repeat("X").take(1999).collect::<String>(),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from("10000000000000000000"),
-    //     );
-    // }
-    //
-    // #[test]
-    // #[should_panic(expected = "Abort. Address is longer then 1000 characters")]
-    // fn add_new_zoo_address_length_validation_error_test() {
-    //     let mut contract = init(accounts(1));
-    //     contract.add_new_zoo(
-    //         repeat("X").take(999).collect::<String>(),
-    //         repeat("X").take(1999).collect::<String>(),
-    //         repeat("X").take(1001).collect::<String>(),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from("10000000000000000000"),
-    //     );
-    // }
-    //
-    // #[test]
-    // #[should_panic(expected = "Abort. Banner image is empty")]
-    // fn add_new_zoo_banner_image_empty_validation_error_test() {
-    //     let mut contract = init(accounts(1));
-    //     contract.add_new_zoo(
-    //         repeat("X").take(999).collect::<String>(),
-    //         repeat("X").take(1999).collect::<String>(),
-    //         repeat("X").take(999).collect::<String>(),
-    //         String::from(""),
-    //         String::from(""),
-    //         String::from("10000000000000000000"),
-    //     );
-    // }
-    //
-    // #[test]
-    // #[should_panic(expected = "Abort. NFT media is empty")]
-    // fn add_new_zoo_nft_media_empty_validation_error_test() {
-    //     let mut contract = init(accounts(1));
-    //     contract.add_new_zoo(
-    //         repeat("X").take(999).collect::<String>(),
-    //         repeat("X").take(1999).collect::<String>(),
-    //         repeat("X").take(999).collect::<String>(),
-    //         String::from("banner_image"),
-    //         String::from(""),
-    //         String::from("10000000000000000000"),
-    //     );
-    // }
-    //
-    // #[test]
-    // fn add_new_zoo_success_test() {
-    //     let mut contract = init(accounts(1));
-    //     contract.add_new_zoo(
-    //         String::from("SomeTitle"),
-    //         repeat("X").take(1999).collect::<String>(),
-    //         repeat("X").take(999).collect::<String>(),
-    //         String::from("banner_image"),
-    //         String::from("nft_media"),
-    //         String::from("10000000000000000000"),
-    //     );
-    //     assert_eq!(contract.zoos.len(), 1);
-    //     assert_eq!(contract.zoos.keys().find(|x| x == &accounts(1)), Some(accounts(1)));
-    //     assert_eq!(contract.zoos.get(&accounts(1)).unwrap().title, String::from("SomeTitle"));
-    // }
+    #[test]
+    #[should_panic]
+    fn add_new_fundraiser_validation_description_test() {
+        let mut contract = attach_dep_for_adding_fundraiser();
 
-
-    //
-    // #[test]
-    // fn update_zoo_by_id_success_test() {
-    //     let mut contract = init(accounts(1));
-    //     let zoo: Zoo = Zoo {
-    //         owner_id: accounts(1),
-    //         title: String::from("test"),
-    //         description: String::from("test"),
-    //         address: String::from("test"),
-    //         banner_image: String::from("test"),
-    //         nft_media: String::from("test"),
-    //         nft_price: 1_000_000_000_000_000,
-    //         total_collected: 0,
-    //         nft_sold: 0,
-    //     };
-    //     contract.zoos.insert(
-    //         &accounts(1),
-    //         &zoo,
-    //     );
-    //
-    //     assert_eq!(contract.zoos.get(&accounts(1)), Some(zoo.clone()));
-    //     assert_ne!(contract.update_zoo(accounts(1),
-    //                                    "title".to_string(),
-    //                                    "description".to_string(),
-    //                                    "address".to_string(),
-    //                                    "image".to_string(),
-    //                                    "111111111".to_string()), zoo.clone());
-    //     assert_ne!(contract.zoos.get(&accounts(1)), Some(zoo.clone()));
-    // }
+        contract.add_new_fundraiser("test".to_string(), repeat("X").take(2001).collect::<String>(), FundraiserStatus::ACTIVE, TokenMetadata {
+            title: None,
+            description: None,
+            media: None,
+            media_hash: None,
+            copies: None,
+            issued_at: None,
+            expires_at: None,
+            starts_at: None,
+            updated_at: None,
+            extra: None,
+            reference: None,
+            reference_hash: None,
+        });
+    }
 }

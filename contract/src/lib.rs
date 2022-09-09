@@ -9,6 +9,7 @@ use near_sdk::json_types::{U128, Base64VecU8};
 use crate::fundraiser::*;
 use crate::nft::*;
 use crate::helpers::*;
+use crate::test::*;
 
 mod nft;
 mod fundraiser;
@@ -30,6 +31,7 @@ pub struct Contract {
 
     pub fundraiser_per_owner: LookupMap<AccountId, UnorderedSet<FundraiserId>>,
     pub fundraisers_by_id: UnorderedMap<FundraiserId, Fundraiser>,
+    pub fundraisers_donations: UnorderedMap<FundraiserId, UnorderedMap<AccountId, UnorderedSet<u128>>>, // fundraiser_id => (who donated => [amounts])
     pub fundraiser_counter: u32,
 
 
@@ -93,7 +95,8 @@ impl Contract {
 
             fundraiser_per_owner: LookupMap::new(b"m"),
             fundraisers_by_id: UnorderedMap::new(b"v"),
-            fundraiser_counter: 0
+            fundraiser_counter: 0,
+            fundraisers_donations: UnorderedMap::new(b"d"),
         };
 
         this
