@@ -3,19 +3,21 @@ extern crate core;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use near_sdk::{PromiseOrValue, Promise, near_bindgen, PanicOnDefault, BorshStorageKey, AccountId, borsh::{self, BorshDeserialize, BorshSerialize}, serde::{Deserialize, Serialize}, env, CryptoHash, log};
-use near_sdk::collections::{LazyOption, LookupMap, UnorderedMap, UnorderedSet};
+use near_sdk::collections::{LazyOption, LookupMap, UnorderedMap, UnorderedSet, Vector};
 use near_sdk::json_types::{U128, Base64VecU8};
 
 use crate::fundraiser::*;
 use crate::nft::*;
 use crate::helpers::*;
 use crate::test::*;
+use crate::seeds::*;
 
 mod nft;
 mod fundraiser;
 mod helpers;
 mod test;
-
+mod seeds;
+mod config;
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -31,7 +33,7 @@ pub struct Contract {
 
     pub fundraiser_per_owner: LookupMap<AccountId, UnorderedSet<FundraiserId>>,
     pub fundraisers_by_id: UnorderedMap<FundraiserId, Fundraiser>,
-    pub fundraisers_donations: UnorderedMap<FundraiserId, UnorderedMap<AccountId, UnorderedSet<u128>>>, // fundraiser_id => (who donated => [amounts])
+    pub fundraisers_donations: UnorderedMap<FundraiserId, UnorderedMap<AccountId, Vector<u128>>>, // fundraiser_id => (who donated => [amounts])
     pub fundraiser_counter: u32,
 
 

@@ -106,10 +106,11 @@ impl Contract {
 
         self.fundraisers_by_id.insert(&fundraiser_id.clone(), &fundraiser);
     }
+
     #[payable]
     pub fn donate_to_fundraiser(&mut self, fundraiser_id: FundraiserId)
     {
-        let fundraiser: Fundraiser = self.fundraisers_by_id.get(&fundraiser_id).unwrap();
+        let fundraiser: Fundraiser = self.fundraisers_by_id.get(&fundraiser_id).expect("Incorrect fundraiser id");
         let donation = env::attached_deposit();
         let donor_id = env::predecessor_account_id();
 
@@ -128,15 +129,18 @@ impl Contract {
                 b"donor".as_slice(),
                 &near_sdk::env::sha256_array(donor_id.as_bytes()),
             ].concat();
-            UnorderedSet::new(prefix)
+            Vector::new(prefix)
         });
-        donations_of_donor.insert(&u128::from(donation)); // todo make to store a lot of equal values
+        donations_of_donor.push(&u128::from(donation));
         fundraiser_donations_list.insert(&donor_id, &donations_of_donor);
         self.fundraisers_donations.insert(&fundraiser_id, &fundraiser_donations_list);
+
+        let token_id: TokenId = fundraiser_id.to_string();
+        self.nft_transfer(donor_id.clone(), token_id, None);
         log!("{:?}",donation);
         log!("{:?}", self.fundraisers_donations.get(&fundraiser_id).unwrap().get(&donor_id).unwrap().to_vec())
     }
-    //
+
     // pub fn update_zoo(
     //     &mut self,
     //     zoo_id: AccountId,
@@ -176,7 +180,7 @@ mod tests {
     use std::iter::repeat;
     use test::test_helpers::init;
     use near_sdk::test_utils::{accounts, VMContextBuilder};
-    use near_sdk::testing_env;
+    use near_sdk::{Balance, testing_env};
     use crate::test_helpers::get_context;
 
     const MINT_STORAGE_COST: u128 = 5870000000000000000000;
@@ -194,6 +198,57 @@ mod tests {
 
         contract
     }
+
+    // #[test]
+    // fn my_test() {
+    //     let mut contract = attach_dep_for_adding_fundraiser();
+    //
+    //     contract.add_new_fundraiser("test".to_string(), repeat("X").take(21).collect::<String>(), FundraiserStatus::ACTIVE, TokenMetadata {
+    //         title: None,
+    //         description: None,
+    //         media: None,
+    //         media_hash: None,
+    //         copies: None,
+    //         issued_at: None,
+    //         expires_at: None,
+    //         starts_at: None,
+    //         updated_at: None,
+    //         extra: None,
+    //         reference: None,
+    //         reference_hash: None,
+    //     });
+    //     let fundraiser_id:FundraiserId = 1;
+    //     let fundraiser: Fundraiser = contract.fundraisers_by_id.get(&fundraiser_id).expect("incorrect id");
+    //     let donation:Balance = 1_000_000_000;
+    //     let donor_id = accounts(2);
+    //     log!("{}", donation);
+    //     let mut fundraiser_donations_list = contract.fundraisers_donations.get(&fundraiser_id).unwrap_or_else(|| {
+    //         // if there is no donations yet -> initialize lookup for the donor
+    //         let prefix: Vec<u8> = [
+    //             b"f_donations".as_slice(),
+    //             &near_sdk::env::sha256_array(donor_id.as_bytes()),
+    //         ]
+    //             .concat();
+    //         UnorderedMap::new(prefix)
+    //     });
+    //     let mut donations_of_donor = fundraiser_donations_list.get(&donor_id).unwrap_or_else(|| {
+    //         // if there is no donations for donor -> init it
+    //         let prefix: Vec<u8> = [
+    //             b"donor".as_slice(),
+    //             &near_sdk::env::sha256_array(donor_id.as_bytes()),
+    //         ].concat();
+    //         Vector::new(prefix)
+    //     });
+    //     donations_of_donor.push(&u128::from(donation)); // todo make to store a lot of equal values
+    //     donations_of_donor.push(&u128::from(donation)); // todo make to store a lot of equal values
+    //     donations_of_donor.push(&u128::from(2000 as Balance)); // todo make to store a lot of equal values
+    //     fundraiser_donations_list.insert(&donor_id, &donations_of_donor);
+    //     contract.fundraisers_donations.insert(&fundraiser_id, &fundraiser_donations_list);
+    //     log!("{:?}",donation);
+    //     log!("{:?}", contract.fundraisers_donations.get(&fundraiser_id).unwrap().get(&donor_id).unwrap().to_vec());
+    //     panic!()
+    // }
+
 
     #[test]
     fn get_fundraiser_by_id_not_found_test() {

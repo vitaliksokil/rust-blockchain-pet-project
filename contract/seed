@@ -1,0 +1,1 @@
+near call main.u_fundraiser.testnet seed '{}' --accountId main.u_fundraiser.testnet --amount 1
